@@ -1,0 +1,19 @@
+{
+  "name": "cloud-storage",
+  "version": "1.0.0",
+  "description": "Cloud storage for file-transfer",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/f1le-transfer/cloud-storage.git"
+  },
+  "author": "loveyousomuch554@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/f1le-transfer/cloud-storage/issues"
+  },
+  "homepage": "https://github.com/f1le-transfer/cloud-storage#readme"
+}
