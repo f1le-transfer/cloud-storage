@@ -9,13 +9,19 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((HOST, PORT))
 s.listen(5)
 
+def send_msg(conn, msg):
+  msg = bytes(msg+'\n', 'utf-8')
+  conn.send(msg)
+
 while 1:
   conn, addr = s.accept()
-  print(f"Conn by {addr}")
-  
-  conn.send(bytes('Hello, World!\n', 'utf-8'))
+  print(f"Client: {addr[0]}:{addr[1]}")
+
+  #conn.send(bytes('Hello, World!\n', 'utf-8'))
+  send_msg(conn, 'Hello, World!')  
+
   # close client connection
-  conn.close() 
+  conn.close()
   print()
 
 s.close() 
