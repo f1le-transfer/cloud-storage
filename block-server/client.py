@@ -2,6 +2,7 @@
 import socket
 
 HEADER = 64
+BUF_SIZE = 4096
 PORT = 5050
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = "!DISCONNECT"
@@ -18,14 +19,18 @@ def send(msg):
     send_length += b' ' * (HEADER - len(send_length))
     client.send(send_length)
     client.send(message)
-    print(client.recv(4096).decode(FORMAT))
+    print(client.recv(BUF_SIZE).decode(FORMAT))
 
-send("Hello World!")
+# Trasfer file
+file_name = input()
+f = open(file_name, '+r')
+l = f.read(BUF_SIZE)
 
-input_msg = input()
-while input_msg != 'd':
-  send(input_msg)
-  input_msg = input()
+while (l):
+  send(l)
+  l = f.read(BUF_SIZE)
+f.close()
 
+# Close connection
 send(DISCONNECT_MESSAGE)
 client.close()
