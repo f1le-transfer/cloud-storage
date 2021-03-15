@@ -17,17 +17,9 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 
 
-def save_file(user_file, conn):
-  connected = True
-  with open(user_file, 'w+') as f:
-    while connected:
-      data = conn.recv(BUF_SIZE).decode(FORMAT)
-      f.write(data)
-      if data == DISCONNECT_MESSAGE:
-        connected = False
-      #f.write(data)
-  print('File saved.')
-  return connected
+def save_file(user_file, data):
+  with open(user_file, "+w") as f:
+    f.write(data) 
 
 def handle_client(conn, addr):
   print(f"[NEW CONNECTION] {addr} connected.\n")
@@ -36,8 +28,12 @@ def handle_client(conn, addr):
   while connected:
     data_len = conn.recv(HEADER).decode(FORMAT)
     if data_len:
-      connected = save_file('test_server.txt', conn)
-      #print(f"[{addr}] {data}")
+      data = conn.recv(BUF_SIZE).decode(FORMAT)
+      print(f"[{addr}] {data}")
+      if data == DISCONNECT_MESSAGE:
+        connected = False
+      else:
+        save_file('server_test.txt', data)
       conn.send("Data received".encode(FORMAT))
 
   conn.close()
