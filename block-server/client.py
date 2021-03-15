@@ -18,11 +18,14 @@ def send(msg):
     send_length = str(msg_length).encode(FORMAT)
     send_length += b' ' * (HEADER - len(send_length))
     client.send(send_length)
+    req = 'POST'.encode(FORMAT)
+    req += b' ' * (HEADER - len(req))
+    client.send(req)
     client.send(message)
     print(client.recv(BUF_SIZE).decode(FORMAT))
 
 # Trasfer file
-file_name = input()
+file_name = input('file name? ')
 f = open(file_name, '+r')
 l = f.read(BUF_SIZE)
 
