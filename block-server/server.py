@@ -1,9 +1,9 @@
 import socket 
 import threading
+from TCP_STATUSES import TCP_STATUSES
 
 # TODO: 
 # 1. Saving data in the filesystem like world1_15_12_27.chunk
-# 2. Method for receive data
 
 HEADER = 64
 BUF_SIZE = 4096
@@ -16,6 +16,7 @@ DISCONNECT_MESSAGE = "!DISCONNECT"
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 
+reserved_fields = ['TCP', 'OK', 'Content-Length', 'Content-Type', 'Date', 'Server']
 
 def save_file(user_file, data):
   with open(user_file, "+w") as f:
@@ -30,11 +31,12 @@ def handle_client(conn, addr):
     data_len = conn.recv(HEADER).decode(FORMAT).strip()
     req_type = conn.recv(HEADER).decode(FORMAT).strip()
     file_name = conn.recv(HEADER).decode(FORMAT).strip()
-  
+      
     if not data_len: break
     print(f'Len: {data_len} {req_type}')
 
     data = conn.recv(BUF_SIZE).decode(FORMAT)
+    print(f'[{addr}] TCP {req_type} FILE {file_name} {data}')
     print(f"[{addr}] {data}")
     save_file('server_test.txt', data)
     conn.send("Data received".encode(FORMAT))
