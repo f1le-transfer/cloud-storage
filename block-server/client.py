@@ -17,13 +17,15 @@ def header(data):
   data +=  b' ' * (HEADER - len(data))
   return data
 
-def send(msg, req_type):
+def send(msg, req_type, file_name=False):
     message = msg.encode(FORMAT)
     msg_length = len(message)
     
     # Send headers message length and type request
     client.send(header(msg_length))
     client.send(header(req_type))
+    if file_name:
+      client.send(header(file_name))
 
     client.send(message)
     print(client.recv(BUF_SIZE).decode(FORMAT))
@@ -36,12 +38,10 @@ def handle_file(name, req_type):
   f = open(name, '+r')
   l = f.read(BUF_SIZE)
   while (l):
-    send(l, req_type)
+    send(l, req_type, file_name)
     l = f.read(BUF_SIZE)
   f.close()
 
 handle_file(file_name, req_type)
 
-# Close connection
-send(DISCONNECT_MESSAGE, 'POST')
 client.close()

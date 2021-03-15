@@ -25,18 +25,19 @@ def handle_client(conn, addr):
   print(f"[NEW CONNECTION] {addr} connected.\n")
 
   connected = True
-  while connected:
+  while True:
+    # Headers
     data_len = conn.recv(HEADER).decode(FORMAT).strip()
     req_type = conn.recv(HEADER).decode(FORMAT).strip()
+    file_name = conn.recv(HEADER).decode(FORMAT).strip()
+  
+    if not data_len: break
     print(f'Len: {data_len} {req_type}')
-    if data_len:
-      data = conn.recv(BUF_SIZE).decode(FORMAT)
-      print(f"[{addr}] {data}")
-      if data == DISCONNECT_MESSAGE:
-        connected = False
-      else:
-        save_file('server_test.txt', data)
-      conn.send("Data received".encode(FORMAT))
+
+    data = conn.recv(BUF_SIZE).decode(FORMAT)
+    print(f"[{addr}] {data}")
+    save_file('server_test.txt', data)
+    conn.send("Data received".encode(FORMAT))
 
   conn.close()
         
