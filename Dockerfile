@@ -1,8 +1,6 @@
-FROM node:14.16.0-alpine3.10
-RUN mkdir -p /app/node_modules && chown -R node:node /app/
+FROM python:3-slim
 WORKDIR /app
-COPY package*.json .
-USER node
-COPY --chown=node:node . .
-EXPOSE 80
-CMD ["node", "block-server/server.js"]
+VOLUME ["/test"]
+COPY . .
+EXPOSE 5050
+CMD [ "python", "./block-server/server.py" ]
