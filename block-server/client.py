@@ -12,15 +12,19 @@ ADDR = (SERVER, PORT)
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDR)
 
+def header(data):
+  data = str(data).encode(FORMAT)
+  data +=  b' ' * (HEADER - len(data))
+  return data
+
 def send(msg, req_type):
     message = msg.encode(FORMAT)
     msg_length = len(message)
-    send_length = str(msg_length).encode(FORMAT)
-    send_length += b' ' * (HEADER - len(send_length))
-    client.send(send_length)
-    req = req_type.encode(FORMAT)
-    req += b' ' * (HEADER - len(req))
-    client.send(req)
+    
+    # Send headers message length and type request
+    client.send(header(msg_length))
+    client.send(header(req_type))
+
     client.send(message)
     print(client.recv(BUF_SIZE).decode(FORMAT))
 
