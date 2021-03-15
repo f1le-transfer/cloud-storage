@@ -1,4 +1,4 @@
 # Ignore all text files
 *.txt
-
 *.swp
+__pycache__
