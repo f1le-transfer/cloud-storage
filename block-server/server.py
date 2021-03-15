@@ -26,9 +26,9 @@ def handle_client(conn, addr):
 
   connected = True
   while connected:
-    data_len = conn.recv(HEADER).decode(FORMAT)
-    #print(f'Data len: {data_len}')
-    print(conn.recv(HEADER).decode(FORMAT))
+    data_len = conn.recv(HEADER).decode(FORMAT).strip()
+    req_type = conn.recv(HEADER).decode(FORMAT).strip()
+    print(f'Len: {data_len} {req_type}')
     if data_len:
       data = conn.recv(BUF_SIZE).decode(FORMAT)
       print(f"[{addr}] {data}")
