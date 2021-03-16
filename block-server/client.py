@@ -1,5 +1,6 @@
 # Client example
 import socket
+from header import set_header_req
 
 HEADER = 64
 BUF_SIZE = 4096
@@ -21,6 +22,8 @@ def send(msg, req_type, file_name=False):
     message = msg.encode(FORMAT)
     msg_length = len(message)
     
+    print(set_header_req(file_name, req_type, file_name, SERVER))    
+  
     # Send headers message length and type request
     client.send(header(msg_length))
     client.send(header(req_type))
@@ -32,6 +35,7 @@ def send(msg, req_type, file_name=False):
 
 req_type = input('request type? ')
 file_name = input('file name? ')
+print()
 
 # Trasfer file
 def handle_file(name, req_type):

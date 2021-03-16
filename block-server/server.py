@@ -37,7 +37,6 @@ def handle_client(conn, addr):
 
     data = conn.recv(BUF_SIZE).decode(FORMAT)
     print(f'[{addr}] TCP {req_type} FILE {file_name} {data}')
-    print(f"[{addr}] {data}")
     save_file('server_test.txt', data)
     conn.send("Data received".encode(FORMAT))
 
