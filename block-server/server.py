@@ -1,6 +1,6 @@
 import socket 
 import threading
-from TCP_STATUSES import TCP_STATUSES
+#from TCP_STATUSES import TCP_STATUSES
 
 # TODO: 
 # 1. Saving data in the filesystem like world1_15_12_27.chunk
