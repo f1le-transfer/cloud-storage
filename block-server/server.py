@@ -27,27 +27,35 @@ def handle_client(conn, addr):
 
   connected = True
   while True:
-    # Headers
+    # Receive headers
     data_len = conn.recv(HEADER).decode(FORMAT).strip()
     req_type = conn.recv(HEADER).decode(FORMAT).strip()
     file_name = conn.recv(HEADER).decode(FORMAT).strip()
+    
       
     if not data_len: break
     print(f'Len: {data_len} {req_type}')
-
+    
+    # Get data from client
     data = conn.recv(BUF_SIZE).decode(FORMAT)
     print(f'[{addr}] TCP {req_type} FILE {file_name} {data}')
+    
+    # Save data in file
     save_file('server_test.txt', data)
+    
+    # Send message about end of the downloading
     conn.send("Data received".encode(FORMAT))
 
   conn.close()
         
-
+# Strart server
 def start():
   server.listen()
   print(f"[LISTENING] Server is listening on {SERVER}")
   while True:
     conn, addr = server.accept()
+    
+    # Create new process for every client
     thread = threading.Thread(target=handle_client, args=(conn, addr))
     thread.start()
     print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}\n")
