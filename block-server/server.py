@@ -30,7 +30,7 @@ def handle_client(conn, addr):
     # Receive headers
     data_len = conn.recv(HEADER).decode(FORMAT).strip()
     req_type = conn.recv(HEADER).decode(FORMAT).strip()
-    file_name = conn.recv(HEADER).decode(FORMAT).strip()
+    file_name = "NO"#conn.recv(HEADER).decode(FORMAT).strip()
     
       
     if not data_len: break
@@ -38,10 +38,10 @@ def handle_client(conn, addr):
     
     # Get data from client
     data = conn.recv(BUF_SIZE).decode(FORMAT)
-    print(f'[{addr}] TCP {req_type} FILE {file_name} {data}')
+    print(f'[{addr}] TCP: {req_type}, FILE: {file_name}, Data from client:\n{data}')
     
     # Save data in file
-    save_file('server_test.txt', data)
+    #save_file('server_test.txt', data)
     
     # Send message about end of the downloading
     conn.send("Data received".encode(FORMAT))
