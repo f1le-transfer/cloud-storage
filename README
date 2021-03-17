@@ -5,3 +5,8 @@ Cloud/Block Storage stores chunks of files uploaded by the users. Clients direct
 Block server receives/sends data via tcp protocol. The client or application receives data through directory trees, folders, and individual files. This functions similarly to a local hard drive.
 
 Quick and dirty solution: use the filesystem. Save each chunk to one file with a naming convention which includes the coordinates of the chunk (like world1_15_12_27.chunk).
+
+Frequent errors:
+-> fatal error: 'bits/stdc++.h' file not found
+
+Solution: https://apple.stackexchange.com/questions/148401/file-not-found-error-while-including-bits-stdc-h
