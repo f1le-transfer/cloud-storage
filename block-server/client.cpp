@@ -1,52 +1,104 @@
-#include <stdio.h> 
-#include <sys/socket.h> 
-#include <arpa/inet.h> 
-#include <unistd.h> 
+#include <iostream>
+#include <fstream>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string.h>
-#include <bits/stdc++.h>
+
 using namespace std;
 
-//macro definitions
-#define PORT 5050
-#define MAX_MESSAGE_LEN 60  // Maximum len of message from client can't be more than 60
-#define HEADER 64
-
-int main(int argc, char const *argv[]) {
-    int sock = 0, valread;
-    struct sockaddr_in serv_addr; 
-    char msg[MAX_MESSAGE_LEN];
-    char buffer[4096] = {0};
-
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) { 
-        printf("\n Socket creation error \n");
-        return -1;
+class Client_socket {
+    fstream file;
+    
+    int PORT;
+    int general_socket_descriptor;
+    struct sockaddr_in address;
+    int address_length;
+    
+    public:
+        Client_socket() {
+            create_socket();
+            PORT = 5050;
+            
+            address.sin_family = AF_INET;
+            address.sin_port = htons(PORT);
+            address_length = sizeof(address);
+            
+            if (inet_pton(AF_INET, "127.0.0.1", &address.sin_addr) <= 0) {
+                cout << "[ERROR] : Invalid address\n";
+            }
+            
+            create_connection();
+            
+            file.open("./test.txt", ios::in | ios::binary);
+            if (file.is_open()) {
+                cout << "[LOG] : File is ready to Transmit.\n";
+            }
+            else {
+                cout << "[ERROR] : File loading failed, Exititng.\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+    
+    void create_socket() {
+        if ((general_socket_descriptor = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            perror("[ERROR] : Socket failed.\n");
+            exit(EXIT_FAILURE);
+        }
+        cout << "[LOG] : Socket Created Successfully.\n";
     }
-   
-    serv_addr.sin_family = AF_INET; 
-    serv_addr.sin_port = htons(PORT); 
-       
-    // Convert IPv4 and IPv6 addresses from text to binary form 
-    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-        printf("\nInvalid address/ Address not supported \n"); 
-        return -1; 
-    } 
-   
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) { 
-        printf("\nConnection Failed \n"); 
-        return -1; 
+    
+    void create_connection() {
+        if (connect(general_socket_descriptor, (struct sockaddr *)&address, sizeof(address)) < 0) {
+            perror("[ERROR] : connection attempt failed.\n");
+            exit(EXIT_FAILURE);
+        }
+        cout << "[LOG] : Connection Successfull.\n";
     }
     
+    void receive_file() {
+        char buffer[4096] = {};
+        int valread = read(general_socket_descriptor , buffer, 4096);
+        cout << "[LOG] : Data received " << valread << " bytes\n";
+        cout << "[LOG] : Saving data to file.\n";
+        
+        file << buffer;
+        cout << "[LOG] : File Saved.\n";
+    }
     
-    // Input
-    printf("msg? ");
-    cin.getline(msg, MAX_MESSAGE_LEN);
+    void transmit_file() {
+        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        cout << "[LOG] : Transmission Data Size " << contents.length() << " Bytes.\n";
+
+        cout<<"[LOG] : Sending...\n";
+
+        int bytes_sent = send(general_socket_descriptor , contents.c_str() , contents.length() , 0 );
+        cout << "[LOG] : Transmitted Data Size " << bytes_sent << " Bytes.\n";
+
+        cout << "[LOG] : File Transfer Complete.\n";
+        
+        close_connection();
+    }
     
+//    void send_header() {
+//        cout << "[LOG] : Sending...\n";
+//        send(general_socket_descriptor, "0123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263", strlen("Hello, World!"), 0);
+//        cout << "[LOG] : File Transfer Complete.\n";
+//    }
     
-    // Send header to server *here*
-    send(sock, "Some message", strlen("Some message"), 0);
-    
-    send(sock, msg, strlen(msg), 0 );
-    
-    shutdown(sock, 2);
+    void close_connection() {
+        cout << "[LOG] : Closing connection...\n";
+        shutdown(general_socket_descriptor, 2);
+        cout << "[LOG] : Connection closed.\n";
+    }
+};
+
+int main() {
+    Client_socket C;
+//    C.receive_file();
+    C.transmit_file();
     return 0;
 }
