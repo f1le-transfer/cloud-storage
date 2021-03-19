@@ -22,6 +22,8 @@ def save_file(user_file, data):
   with open(user_file, "+w") as f:
     f.write(data) 
 
+def get_headers(): None
+
 def handle_client(conn, addr):
   print(f"\n[NEW CONNECTION] {addr} connected.")
 
@@ -34,7 +36,7 @@ def handle_client(conn, addr):
     if not data: break
 
     # Save data in file
-    save_file('server_test.txt', data)
+    save_file('a.txt', data)
     
     # Send message about end of the downloading
     #conn.send("Data received".encode(FORMAT))

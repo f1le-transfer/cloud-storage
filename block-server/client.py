@@ -25,13 +25,13 @@ def send(msg, req_type, file_name=False):
     #print(set_header_req(file_name, req_type, file_name, SERVER))    
   
     # Send headers message length and type request
-    client.send(header(msg_length))
-    client.send(header(req_type))
-    if file_name:
-      client.send(header(file_name))
+    #client.send(header(msg_length))
+    #client.send(header(req_type))
+    #if file_name:
+    #  client.send(header(file_name))
 
     client.send(message)
-    print(client.recv(BUF_SIZE).decode(FORMAT))
+    #print(client.recv(BUF_SIZE).decode(FORMAT))
 
 req_type = input('request type? ')
 file_name = input('file name? ')
