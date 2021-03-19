@@ -6,7 +6,7 @@ Block server receives/sends data via tcp protocol. The client or application rec
 
 Quick and dirty solution: use the filesystem. Save each chunk to one file with a naming convention which includes the coordinates of the chunk (like world1_15_12_27.chunk).
 
-Since the client application is PWA, we will use WebAssembly to speed up file processing. Therefore, part of the logic of the client application will execute c++.
+Since the client application is PWA, we will use WebAssembly to speed up file processing. Therefore, part of the logic of the client application will execute c++ or another language.
 
 Frequent errors:
 -> fatal error: 'bits/stdc++.h' file not found
