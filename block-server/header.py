@@ -1,7 +1,7 @@
 import os
 import datetime
 import socket
-from TCP_STATUSES import TCP_STATUSES
+#from TCP_STATUSES import TCP_STATUSES
 
 def set_header_req(metadata, method, path=False, host=False):
   header_fields = {
