@@ -1,6 +1,5 @@
 import socket 
 import threading
-#from TCP_STATUSES import TCP_STATUSES
 
 # TODO: 
 # 1. Saving data in the filesystem like world1_15_12_27.chunk
@@ -15,28 +14,37 @@ FORMAT = 'utf-8'
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 
-def save_file(user_file, data):
-  with open(user_file, "+w") as f:
-    f.write(data) 
-
+# Create header
 def header(data):
   data = str(data).encode(FORMAT)
   data +=  b' ' * (HEADER - len(data))
   return data
 
-def chunk_name(header):
-  for i in header:
-    if i[:11] == "Chunk-name:":
-      return i[11:].strip()
-
+# Send header
 def send_msg(conn, _chunk_name):
   _header = header(f"Connection: close\nChunk-name: {_chunk_name}")
   conn.send(_header)
-    
+
+# Parse header to the object
+def parase_header(header):
+  header_obj = {}
+  for i in header:
+    if i.find("Chunk-name") > -1:
+      header_obj["chunk_name"] = i[i.find("Chunk-name")+len("Chunk-name: "):].strip()
+    if i.find("TCP") > -1:
+      header_obj["method"] = i[i.find("TCP")+len("TCP "):].strip()
+  return header_obj
+
+# Write data to the file
+def save_file(user_file, data):
+  with open(user_file, "+w") as f:
+    f.write(data)
 
 def handle_client(conn, addr):
   print(f"\n[NEW CONNECTION] {addr} connected.\n")
-  _chunk_name = None
+  _method = _chunk_name = None
+  isok = True
+  
   while True:
     # Get data from client
     header = conn.recv(HEADER).decode(FORMAT)
@@ -46,13 +54,21 @@ def handle_client(conn, addr):
         
     if not data or not header: break
         
-    # Save data in file
-    _chunk_name = chunk_name(header)
-    save_file(_chunk_name, data)
+    _chunk_name = parase_header(header)["chunk_name"]
+    _method = parase_header(header)["method"]
+    
+    if _method == "POST":
+      # Save data in file
+      save_file(_chunk_name, data)
+    else:
+      isok = False
+      break
   
-#  send_msg(conn, _chunk_name)
   conn.close()
-  print(f"[LOG] File {_chunk_name} saved.")
+  if isok:
+    print(f"[LOG] File {_chunk_name} saved. Method: {_method}")
+  else:
+    print(f"[LOG] Wrong method \"{_method}\" for {_chunk_name}")
 
 # Strart server
 def start():

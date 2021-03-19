@@ -20,11 +20,10 @@ def header(data):
 def send(msg, req_type, file_size, chunk_name):
   msg = msg.encode(FORMAT)
 
-  _header = header(f"Connection: keep-alive\nContent-length: {file_size}\nChunk-name: {chunk_name}")
+  _header = header(f"TCP {req_type}\nConnection: keep-alive\nContent-length: {file_size}\nChunk-name: {chunk_name}")
     
   client.send(_header)
   client.send(msg)
-#  print(client.recv(BUF_SIZE).decode(FORMAT))
 
 req_type = input('request type? ')
 path_file = input('path to file? ')
