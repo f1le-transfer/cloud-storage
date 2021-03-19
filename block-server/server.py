@@ -11,7 +11,6 @@ PORT = 5050
 SERVER = '127.0.0.1'
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
-DISCONNECT_MESSAGE = "!DISCONNECT"
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
@@ -22,7 +21,8 @@ def save_file(user_file, data):
   with open(user_file, "+w") as f:
     f.write(data) 
 
-def get_headers(): None
+def header(data):  
+  return data.encode(FORMAT)
 
 def handle_client(conn, addr):
   print(f"\n[NEW CONNECTION] {addr} connected.")
@@ -30,19 +30,20 @@ def handle_client(conn, addr):
   connected = True
   while True:
     # Get data from client
+    header = conn.recv(HEADER).decode(FORMAT)
     data = conn.recv(BUF_SIZE).decode(FORMAT)
-    print(f"[{addr}] Data from client:\n{data}")
     
-    if not data: break
+    print(header)    
+
+    if not data or not header: break
 
     # Save data in file
     save_file('a.txt', data)
-    
-    # Send message about end of the downloading
-    #conn.send("Data received".encode(FORMAT))
-
+  
   conn.close()
         
+def send_msg(): None
+
 # Strart server
 def start():
   server.listen()

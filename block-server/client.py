@@ -1,12 +1,11 @@
 # Client example
 import socket
-# from header import set_header_req
+import os
 
 HEADER = 64
 BUF_SIZE = 4096
 PORT = 5050
 FORMAT = 'utf-8'
-DISCONNECT_MESSAGE = "!DISCONNECT"
 SERVER = "127.0.0.1"
 ADDR = (SERVER, PORT)
 
@@ -18,19 +17,13 @@ def header(data):
   data +=  b' ' * (HEADER - len(data))
   return data
 
-def send(msg, req_type, file_name=False):
-    message = msg.encode(FORMAT)
-    msg_length = len(message)
-    
-    #print(set_header_req(file_name, req_type, file_name, SERVER))    
-  
-    # Send headers message length and type request
-    #client.send(header(msg_length))
-    #client.send(header(req_type))
-    #if file_name:
-    #  client.send(header(file_name))
+def send(msg, req_type, file_size):
+    msg = msg.encode(FORMAT)
 
-    client.send(message)
+    _header = header(f"Connection: keep-alive\nContent-length: {file_size}")
+    
+    client.send(_header)
+    client.send(msg)
     #print(client.recv(BUF_SIZE).decode(FORMAT))
 
 req_type = input('request type? ')
@@ -39,10 +32,11 @@ print()
 
 # Trasfer file
 def handle_file(name, req_type):
+  size = os.path.getsize(name)
   f = open(name, '+r')
   l = f.read(BUF_SIZE)
   while (l):
-    send(l, req_type, file_name)
+    send(l, req_type, size)
     l = f.read(BUF_SIZE)
   f.close()
 
