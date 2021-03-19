@@ -83,12 +83,6 @@ class Client_socket {
         close_connection();
     }
     
-//    void send_header() {
-//        cout << "[LOG] : Sending...\n";
-//        send(general_socket_descriptor, "0123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263", strlen("Hello, World!"), 0);
-//        cout << "[LOG] : File Transfer Complete.\n";
-//    }
-    
     void close_connection() {
         cout << "[LOG] : Closing connection...\n";
         shutdown(general_socket_descriptor, 2);
@@ -96,9 +90,20 @@ class Client_socket {
     }
 };
 
-int main() {
+
+int send_file() {
     Client_socket C;
-//    C.receive_file();
     C.transmit_file();
+    return 0;
+};
+
+int recv_file() {
+    Client_socket C;
+    C.receive_file();
+    return 0;
+};
+
+int main() {
+    send_file();
     return 0;
 }
