@@ -1,11 +1,14 @@
 import socket 
 import threading
 import os
+import re
+from base64 import b64encode
+from hashlib import sha1
 
 # TODO: 
 # 1. Saving data in the filesystem like world1_15_12_27.chunk
 
-HEADER = 128
+HEADER = 256
 BUF_SIZE = 4096
 PORT = 5050
 SERVER = '127.0.0.1'
@@ -75,10 +78,10 @@ def handle_client(conn, addr):
     if not header: break
     
     header = [h.strip() for h in header.split("\n")]
-    
+
     _chunk_name = parase_header(header)["chunk_name"]
     _method = parase_header(header)["method"]
-    
+
     if _method == "POST":
       data = conn.recv(BUF_SIZE).decode(FORMAT)
       if not data: break
@@ -93,8 +96,7 @@ def handle_client(conn, addr):
       isok = False
       break
   conn.close()
-  
-  conn.close()
+
   if isok:
     if _method == "POST":
       print(f"[LOG] Method: {_method}. File \"{_chunk_name}\" saved.")
@@ -103,6 +105,52 @@ def handle_client(conn, addr):
   else:
     print(f"[LOG] Wrong method \"{_method}\" for {_chunk_name}")
 
+def test(conn, addr):
+  print(f"\n[NEW CONNECTION] {addr} connected.\n") 
+  full_header = ''
+
+  while True:
+    # Get data from client
+    header = conn.recv(BUF_SIZE).decode(FORMAT)
+    raw = repr(header)
+    raw_token = raw[raw.find("Sec-WebSocket-Key:"):]
+    token = raw_token[raw_token.find(' ')+1:raw_token.find(r'\r\n')]
+    print(raw)
+    print()
+    print(token)
+    if "'" + raw[-9:] == repr("\r\n\r\n"): break
+    full_header += header
+
+  head = """GET /chat HTTP/1.1\r\nHost: example.com:8000\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {0}\r\nSec-WebSocket-Version: 13\r\n\r\n
+  """.format(token1)
+  conn.send("1234".encode(FORMAT))
+  conn.close()
+
+
+def test2(conn, addr):
+  websocket_answer = (
+    'HTTP/1.1 101 Switching Protocols',
+    'Upgrade: websocket',
+    'Connection: Upgrade',
+    'Sec-WebSocket-Accept: {key}\r\n\r\n',
+  )
+  GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+  key = (re.search('Sec-WebSocket-Key:\s+(.*?)[\n\r]+', text)
+    .groups()[0]
+    .strip())
+  
+  
+  
+  print(f"\n[NEW CONNECTION] {addr} connected.\n")
+
+  while True: 
+    raw = repr(header)
+    print(raw)
+    if "'" + raw[-9:] == repr("\r\n\r\n"): break
+    header = conn.recv(BUF_SIZE).decode(FORMAT)
+
+
 # Strart server
 def start():
   server.listen()
@@ -110,7 +158,7 @@ def start():
   while True:
     conn, addr = server.accept()
     # Create new process for every client
-    thread = threading.Thread(target=handle_client, args=(conn, addr))
+    thread = threading.Thread(target=test, args=(conn, addr))
     thread.start()
     print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
 
