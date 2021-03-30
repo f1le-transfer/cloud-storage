@@ -5,11 +5,14 @@ import websockets
 import json
 
 async def consumer_handler(websocket, path):
+    host, port = websocket.remote_address
+    print(f'[Connection open] {host}:{port}')
     async for message in websocket:
         msg = json.loads(message)
-        print(msg['msg'])
+        print(f'{host}:{port}', msg['msg'])
         if msg['msg'] == 'close':
             await websocket.close()
+    print(f'[Connection close] {host}:{port}')
 
 start_server = websockets.serve(consumer_handler, "127.0.0.1", 5050)
 
