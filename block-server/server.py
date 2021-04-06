@@ -2,8 +2,10 @@ import json
 import asyncio
 import websockets
 import uuid
+import time
 
-from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCIceCandidate
+from aiortc import RTCIceCandidate, RTCPeerConnection, RTCSessionDescription
+from aiortc.contrib.signaling import BYE, add_signaling_arguments, create_signaling
 
 host = '127.0.0.1'
 port = 5050
@@ -11,61 +13,47 @@ port = 5050
 pcs = set()
 peerConnection = None
 
-class clsprops:
-	def __init__(self, data):
-		self.__dict__ = data
+# 1. offer
+# 2. Ice candidate
+# 3. close connection
 
-async def offer_handler(msg, remote, ws):
+async def consume_singaling(ws, msg):
+    if 'offer' in msg:
+        params = json.loads(msg['offer'])
+        offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
+        await peerConnection.setRemoteDescription(offer)
+        await peerConnection.setLocalDescription(await peerConnection.createAnswer())
+        
+        await ws.send(json.dumps({ 'offer': peerConnection.localDescription.__dict__ }))
+    elif 'new-ice-candidate' in msg:
+        candidate = json.loads(msg['new-ice-candidate'])
+        candidate = RTCIceCandidate(candidate)
+        print(candidate)
+        print()
+        await peerConnection.addIceCandidate(candidate=candidate)
+        
+
+async def run_answer(ws, msg):
     global peerConnection
-    # Create peer connection
-
-    config = {
-        'iceServers': [clsprops({'urls': 'stun:stun.l.google.com:19302'})],
-    }
-
-    peerConnection = RTCPeerConnection(clsprops(config))
-    pc_id = "[PeerConnection(%s)]" % uuid.uuid4()
-    pcs.add(peerConnection)
-
-    params = json.loads(msg['offer'])
-    remote_offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
-
-    # Handle offer
-    await peerConnection.setRemoteDescription(remote_offer)
-
-    # Create answer
-    answer = await peerConnection.createAnswer()
-    await peerConnection.setLocalDescription(answer)
-
-    # Send answer
-    await ws.send(json.dumps(
-        { 'offer': {"sdp": answer.sdp, "type": answer.type} }
-    ))
-
-    def log_info(msg, *args):
-        print(pc_id + ' ' + msg, *args)
-    
-    log_info('Created for %s', remote)
+    peerConnection = RTCPeerConnection()
 
     @peerConnection.on("datachannel")
     def on_datachannel(channel):
+        start = time.time()
+        octest = 0
+
         @channel.on("message")
-        def on_message(message):
-            if isinstance(message, str) and message.startswith("ping"):
-                channel.send("pong" + message[4:])
+        async def on_message(msg):
+            nonlocal octest
 
-    @peerConnection.on("connectionstatechange")
-    async def on_connectionstatechange():
-        log_info(f"Connection state is {peerConnection.connectionState}")
-        if peerConnection.connectionState == "failed":
-            await peerConnection.close()
-            pcs.discard(peerConnection)
-
-async def ice_handler(ice, ws):
-    print(ice)
-    print()
-    await peerConnection.addIceCandidate(clsprops(ice))
-    None
+            if msg:
+                octest += len(msg)
+            else:
+                elapsed = time.time() - start
+                print(
+                    "received %d bytes in %.1f s (%.3f Mbps)"
+                    % (octest, elapsed, octest * 8 / elapsed / 1000000)
+                )
 
 # handle message from client
 async def msg_handler(ws, msg, remote):
@@ -79,17 +67,10 @@ async def msg_handler(ws, msg, remote):
             'status': 200,
             'msg': msg['msg']
         }))
-    elif 'offer' in msg:
-        await offer_handler(msg, remote, ws)
-        await ws.send(json.dumps({
-            'status': 'handle peer connection'
-        }))
-    elif 'new-ice-candidate' in msg:
-        # await peerConnection
-        await ice_handler(json.loads(msg['new-ice-candidate']), ws)
-        await ws.send(json.dumps({
-            'status': 'add ice candidate'
-        }))
+    elif 'peerConnection' in msg:
+        await run_answer(ws, msg)
+    elif 'offer' in msg or 'new-ice-candidate' in msg:
+        await consume_singaling(ws, msg)
 
 async def consumer_handler(ws, path):
     host, port = ws.remote_address
