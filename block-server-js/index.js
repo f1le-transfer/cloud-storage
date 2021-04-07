@@ -22,7 +22,7 @@ ws_server.on('request', (req) => {
 let peerConnection;
 
 function msg_handler(origin, connection, { utf8Data: msg }) {
-    log('msg', origin, msg)
+    log('msg')
     msg = JSON.parse(msg)
 
     if (msg.offer) {
@@ -59,7 +59,17 @@ function close_handler(origin, code, desc) {
 
 function set_peerConnection_events() {
     peerConnection.addEventListener('datachannel', event => {
-        const dataChannel = event.channel;
-        console.log(dataChannel)
+        const dataChannel = event.channel
+        console.log('[DATA CHANNEL]', event.channel)
+
+        dataChannel.addEventListener('message', (e) => {
+            const msg = e.data
+            console.log('[MSG]', msg)
+        })
+    
+        dataChannel.addEventListener('open', console.log);
+        dataChannel.addEventListener('close', console.log);
+        dataChannel.addEventListener('error', console.error);
     });
 }
+
