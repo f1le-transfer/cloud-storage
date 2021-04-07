@@ -1,6 +1,7 @@
 const { RTCPeerConnection, RTCSessionDescription } = require('wrtc')
 const { server: WebSocketServer } = require('websocket')
 const http = require('http');
+const fs = require('fs')
 
 const httpServer = http.createServer((req, res) => { res.statusCode = 404; res.end('Not found') })
 httpServer.listen(5050, () => console.log('Server run on 5050'))
@@ -20,6 +21,7 @@ ws_server.on('request', (req) => {
 })
 
 let peerConnection;
+let writeStream;
 
 function msg_handler(origin, connection, { utf8Data: msg }) {
     log('msg')
@@ -60,11 +62,17 @@ function close_handler(origin, code, desc) {
 function set_peerConnection_events() {
     peerConnection.addEventListener('datachannel', event => {
         const dataChannel = event.channel
+        writeStream = fs.createWriteStream('test.txt')
         console.log('[DATA CHANNEL]', event.channel)
+
 
         dataChannel.addEventListener('message', (e) => {
             const msg = e.data
-            console.log('[MSG]', msg)
+            if (typeof msg == 'object') {
+                console.log('[MSG]', msg.byteLength)
+                return writeData(msg)
+            }
+            console.log(msg)
         })
     
         dataChannel.addEventListener('open', console.log);
@@ -73,3 +81,8 @@ function set_peerConnection_events() {
     });
 }
 
+function writeData(buffer) {
+    const data_Uint8Array = new Uint8Array(buffer)
+    console.log(typeof data_Uint8Array)
+    writeStream.write(data_Uint8Array, 'base64')
+}
