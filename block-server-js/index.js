@@ -100,9 +100,9 @@ function createWriteStream(msg) {
     console.log('[receiveChannel MSG]', file)
 
     // Create work directory if not exist
-    fs.mkdir(work_dir, { recursive: true }, console.error)
+    fs.mkdirSync(work_dir, { recursive: true }, console.error)
 
-    writeStream = fs.createWriteStream(path.join(work_dir, file.name))
+    writeStream = fs.createWriteStream(path.join(work_dir, path.normalize(file.name)))
 }
 
 function writeData(buffer) {
