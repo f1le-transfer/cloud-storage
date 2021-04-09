@@ -21,13 +21,10 @@ ws_server.on('request', (req) => {
   connection.on('close', close_handler.bind(undefined, req.origin))
 })
 
-const work_dir = 'files'
+const WORK_DIR = 'files'
+const HEADER_LEN = 100
 let peerConnection;
 let writeStream;
-
-// TODO:
-// 1. Close write stream after file end
-// 2. Work with file system
 
 function msg_handler(origin, connection, { utf8Data: msg }) {
   msg = JSON.parse(msg)
@@ -72,7 +69,18 @@ function set_peerConnection_events() {
     receiveChannel.addEventListener('message', (e) => {
       const msg = e.data
       if (typeof msg === 'string') {
-        return createWriteStream(msg)
+        let data;
+        try {
+          data = JSON.parse(msg)
+        } catch (error) {
+          return console.error('[ERROR] prase json string from client.')
+        }
+        
+        if (data.name && data.dir) {
+          return createWriteStream(data)
+        }
+
+        console.log('[receiveChannel MSG]', data)
       }
 
       if (typeof msg == 'object') {
@@ -90,22 +98,45 @@ function set_peerConnection_events() {
   peerConnection.addEventListener('signalingstatechange', () => console.log('[peerConnection]', 'signalingStateChange:', peerConnection.signalingState))
 }
 
-function createWriteStream(msg) {
-  let file;
-  try {
-    file = JSON.parse(msg)
-  } catch (error) {
-    return console.error('[ERROR] prase json string from client')
-  }
+function createWriteStream(file) {
   console.log('[receiveChannel MSG]', file)
 
   // Create work directory if not exist
-  fs.mkdirSync(file.dir ? path.join(work_dir, file.dir) : work_dir, { recursive: true }, console.error)
+  fs.mkdirSync(file.dir ? path.join(WORK_DIR, file.dir) : WORK_DIR, { recursive: true }, console.error)
+  console.log('[FS]', `Dir ${path.join(file.dir, WORK_DIR)} created`)
 
-  writeStream = fs.createWriteStream(file.dir ? path.join(work_dir, file.dir, path.normalize(file.name)) : path.join(work_dir, path.normalize(file.name)))
+  writeStream = fs.createWriteStream(file.dir ? path.join(WORK_DIR, file.dir, path.normalize(file.name)) : path.join(WORK_DIR, path.normalize(file.name)))
 }
 
 function writeData(buffer) {
   const data_Uint8Array = new Uint8Array(buffer)
-  writeStream.write(data_Uint8Array, 'base64')
+
+  const header = parse_header(data_Uint8Array)
+  console.log('[HEADER]', header)
+
+  writeStream.write(data_Uint8Array.slice(HEADER_LEN), 'base64')
+}
+
+/**
+ * Take header path from buffer.
+ * @param {BufferArray|Uint8Array} buf – header from buffer
+ * @returns {String}
+ */
+function parse_header(buf) {
+  /**
+   * Some methods for parse string from buffer.
+   * – new TextDecoder("utf-8").decode(Uint8Array)
+   * – String.fromCharCode.apply(null, Uint8Array)
+   */
+  const buf_header = new Uint8Array(buf).slice(0, HEADER_LEN)
+  /**
+   * In order to parse json from header
+   * we need filter zeros from char numbers.
+   */
+  const char_arr = buf_header.slice(0, buf_header.indexOf(0))
+  try {
+    return JSON.parse(String.fromCharCode.apply(null, char_arr))
+  } catch (error) {
+    return console.error('[ERROR] Error while parse header from file chunk.')
+  }
 }
