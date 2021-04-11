@@ -1,8 +1,9 @@
 const { RTCPeerConnection, RTCSessionDescription } = require('wrtc')
 const { server: WebSocketServer } = require('websocket')
-const http = require('http');
+const http = require('http')
 const fs = require('fs')
 const path = require('path')
+const worker = require('worker_threads')
 
 const httpServer = http.createServer((req, res) => { res.statusCode = 404; res.end('Not found') })
 httpServer.listen(5050, () => console.log('Server run on 5050'))
@@ -76,6 +77,7 @@ function set_peerConnection_events() {
           return console.error('[ERROR] prase json string from client.')
         }
         
+        // If msg is info of the file
         if (data.name && data.dir) {
           return createWriteStream(data)
         }
@@ -102,7 +104,8 @@ function createWriteStream(file) {
   console.log('[receiveChannel MSG]', file)
 
   // Create work directory if not exist
-  fs.mkdirSync(file.dir ? path.join(WORK_DIR, file.dir) : WORK_DIR, { recursive: true }, console.error)
+  let dir = file.dir ? path.join(WORK_DIR, file.dir) : WORK_DIR
+  fs.mkdirSync(dir, { recursive: true }, console.error)
   console.log('[FS]', `Dir ${path.join(file.dir, WORK_DIR)} created`)
 
   writeStream = fs.createWriteStream(file.dir ? path.join(WORK_DIR, file.dir, path.normalize(file.name)) : path.join(WORK_DIR, path.normalize(file.name)))
