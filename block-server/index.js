@@ -3,7 +3,7 @@ const { server: WebSocketServer } = require('websocket')
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
-const worker = require('worker_threads')
+const { worker, parentPort } = require('worker_threads')
 
 const httpServer = http.createServer((req, res) => { res.statusCode = 404; res.end('Not found') })
 httpServer.listen(5050, () => console.log('Server run on 5050'))

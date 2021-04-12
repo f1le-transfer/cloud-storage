@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/f1le-transfer/cloud-storage/issues"
   },
-  "homepage": "https://github.com/f1le-transfer/cloud-storage#readme"
+  "homepage": "https://github.com/f1le-transfer/cloud-storage#readme",
+  "dependencies": {
+    "websocket": "^1.0.33",
+    "wrtc": "^0.4.7"
+  }
 }
