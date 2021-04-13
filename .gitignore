@@ -4,3 +4,5 @@
 __pycache__
 *.out
 node_modules
+# For chunks
+files

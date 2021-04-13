@@ -13,6 +13,10 @@ ws_server = new WebSocketServer({
   autoAcceptConnections: false
 })
 
+/**
+ * Rewrite code with non-blocking cb
+ */
+
 const log = (...data) => console.log('[WS]', ...data)
 ws_server.on('request', (req) => {
   const connection = req.accept()
@@ -117,7 +121,7 @@ function writeData(buffer) {
   const header = parse_header(data_Uint8Array)
   console.log('[HEADER]', header)
 
-  writeStream.write(data_Uint8Array.slice(HEADER_LEN), 'base64')
+  writeStream.write(data_Uint8Array.slice(HEADER_LEN), 'base64', (e) => console.log('[ERROR]', 'Error while writing data', e))
 }
 
 /**
