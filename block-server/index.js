@@ -121,7 +121,7 @@ function writeData(buffer) {
   const header = parse_header(data_Uint8Array)
   console.log('[HEADER]', header)
 
-  writeStream.write(data_Uint8Array.slice(HEADER_LEN), 'base64', (e) => console.log('[ERROR]', 'Error while writing data', e))
+  writeStream.write(data_Uint8Array.slice(HEADER_LEN), 'base64', (e) => e && console.log('[ERROR]', 'Error while writing data', e))
 }
 
 /**
