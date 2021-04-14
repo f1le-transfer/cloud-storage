@@ -1,23 +1,69 @@
+/**
+ * Main file of the block-server.
+ * @author [lusm554]{@link https://github.com/lusm554}
+ * @requires fs
+ * @requires http
+ * @requires RTCPeerConnection, RTCSessionDescription
+ * @requires websocket
+ */
+
 const { RTCPeerConnection, RTCSessionDescription } = require('wrtc')
 const { server: WebSocketServer } = require('websocket')
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
 const { worker, parentPort } = require('worker_threads')
+const { Queue } = require('./queue')
 
 const httpServer = http.createServer((req, res) => { res.statusCode = 404; res.end('Not found') })
 httpServer.listen(5050, () => console.log('Server run on 5050'))
 
+/**
+ * Web socket server
+ * @type {WebSocketServer}
+ */
 ws_server = new WebSocketServer({
   httpServer,
   autoAcceptConnections: false
 })
 
 /**
- * Rewrite code with non-blocking cb
+ * Directory for client files.
+ * @type {string}
+ */
+const WORK_DIR = 'files'
+
+/**
+ * Size of the header in bytes
+ * @type {number}
+ */
+const HEADER_LEN = 100
+
+/**
+ * Peer connection.
+ * @type {object}
+ */
+let peerConnection;
+
+/**
+ * Writeable stream.
+ * @type {object}
+ */
+let writeStream;
+
+/**
+ * TODO: Rewrite code with non-blocking callbacks
  */
 
+/**
+ * Log data about socket to the console.
+ * @param {*} data
+ */
 const log = (...data) => console.log('[WS]', ...data)
+
+/**
+ * Receive messages from client.
+ */
 ws_server.on('request', (req) => {
   const connection = req.accept()
   log('Connected', req.origin)
@@ -26,11 +72,13 @@ ws_server.on('request', (req) => {
   connection.on('close', close_handler.bind(undefined, req.origin))
 })
 
-const WORK_DIR = 'files'
-const HEADER_LEN = 100
-let peerConnection;
-let writeStream;
-
+/**
+ * Handle message.
+ * @param {String} origin - request host
+ * @param {Object} connection - res object
+ * @param {String} msg - data in utf-8
+ * @returns {void}
+ */
 function msg_handler(origin, connection, { utf8Data: msg }) {
   msg = JSON.parse(msg)
   if (msg.offer) {
@@ -44,6 +92,12 @@ function msg_handler(origin, connection, { utf8Data: msg }) {
   log(msg)
 }
 
+/**
+ * Create peer connection, set remote desc and send asnwer to the client.
+ * @param {Object} offer - WebRTC offer from client
+ * @param {Object} connection - res object
+ * @returns {void}
+ */
 async function offer_handler(offer, connection) {
   const configuration = {
     'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]
@@ -57,53 +111,77 @@ async function offer_handler(offer, connection) {
     .then(() => connection.sendUTF(JSON.stringify({ offer: peerConnection.currentLocalDescription })))
 }
 
+/**
+ * Add ice candidate and send response status.
+ * @param {Object} ice - WebRTC candidate
+ * @param {Object} connection - res object
+ */
 function ice_handler(ice, connection) {
   peerConnection.addIceCandidate(ice)
     .catch(console.error)
   connection.sendUTF(JSON.stringify({ status: 200 }))
 }
 
+/**
+ * Call when websocket connection closed.
+ * @param {String} origin - request host
+ * @param {Number} code - close code
+ * @param {String} desc - desc why connection closed
+ */
 function close_handler(origin, code, desc) {
   log(`Closed ${origin} code:`, code, desc)
 }
 
+/**
+ * Add event handlers on peerConnection.
+ */
 function set_peerConnection_events() {
-  peerConnection.addEventListener('datachannel', event => {
-    // Get data channel from client
-    const receiveChannel = event.channel
-    receiveChannel.addEventListener('message', (e) => {
-      const msg = e.data
-      if (typeof msg === 'string') {
-        let data;
-        try {
-          data = JSON.parse(msg)
-        } catch (error) {
-          return console.error('[ERROR] prase json string from client.')
-        }
-        
-        // If msg is info of the file
-        if (data.name && data.dir) {
-          return createWriteStream(data)
-        }
-
-        console.log('[receiveChannel MSG]', data)
-      }
-
-      if (typeof msg == 'object') {
-        console.log('[receiveChannel MSG]', 'length', msg.byteLength)
-        return writeData(msg)
-      }
-    })
-
-    const onReceiveChannelStateChange = ({ type }) => console.log(`[receiveChannel] ${type}`)
-    receiveChannel.addEventListener('open', onReceiveChannelStateChange)
-    receiveChannel.addEventListener('close', onReceiveChannelStateChange)
-    receiveChannel.addEventListener('error', onReceiveChannelStateChange)
-  })
+  peerConnection.addEventListener('datachannel', data_channel_handler)
   peerConnection.addEventListener('iceconnectionstatechange', () =>  console.log('[peerConnection]', 'iceConnectionStateChange:', peerConnection.iceConnectionState))
   peerConnection.addEventListener('signalingstatechange', () => console.log('[peerConnection]', 'signalingStateChange:', peerConnection.signalingState))
 }
 
+/**
+ * Parse messages and set listeners on receiveChannel.
+ * @param {Object} event - listener event object
+ */
+function data_channel_handler(event) {
+  // Get data channel from client
+  const receiveChannel = event.channel
+  receiveChannel.addEventListener('message', (e) => {
+    const msg = e.data
+    if (typeof msg === 'string') {
+      let data;
+      try {
+        data = JSON.parse(msg)
+      } catch (error) {
+        return console.error('[ERROR] prase json string from client.')
+      }
+
+      // If msg is info of the file
+      if (data.name && data.dir) {
+        return createWriteStream(data)
+      }
+
+      console.log('[receiveChannel MSG]', data)
+    }
+
+    if (typeof msg == 'object') {
+      console.log('[receiveChannel MSG]', 'length', msg.byteLength)
+      return writeData(msg)
+    }
+  })
+
+  const onReceiveChannelStateChange = ({ type }) => console.log(`[receiveChannel] ${type}`)
+  receiveChannel.addEventListener('open', onReceiveChannelStateChange)
+  receiveChannel.addEventListener('close', onReceiveChannelStateChange)
+  receiveChannel.addEventListener('error', onReceiveChannelStateChange)
+}
+
+/**
+ * Create dir for clients files and write stream.
+ * @param {String} file - name of the file
+ */
 function createWriteStream(file) {
   console.log('[receiveChannel MSG]', file)
 
@@ -115,6 +193,10 @@ function createWriteStream(file) {
   writeStream = fs.createWriteStream(file.dir ? path.join(WORK_DIR, file.dir, path.normalize(file.name)) : path.join(WORK_DIR, path.normalize(file.name)))
 }
 
+/**
+ * Write chunk to file.
+ * @param {ArrayBuffer} buffer - chunk of data
+ */
 function writeData(buffer) {
   const data_Uint8Array = new Uint8Array(buffer)
 
@@ -126,7 +208,7 @@ function writeData(buffer) {
 
 /**
  * Take header path from buffer.
- * @param {BufferArray|Uint8Array} buf – header from buffer
+ * @param {ArrayBuffer|Uint8Array} buf – header from buffer
  * @returns {String}
  */
 function parse_header(buf) {
