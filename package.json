@@ -4,7 +4,9 @@
   "description": "Cloud storage for file-transfer",
   "main": "index.js",
   "scripts": {
-    "dev": "VAR_DATA=${PWD}/block-server nodemon ./block-server/index.js"
+    "dev": "VAR_DATA=${PWD}/block-server nodemon ./block-server/index.js",
+    "start": "VAR_DATA=${PWD}/block-server node ./block-server/index.js",
+    "prof": "NVAR_DATA=${PWD}/block-server NODE_ENV=production node --prof ./block-server/index.js"
   },
   "repository": {
     "type": "git",
