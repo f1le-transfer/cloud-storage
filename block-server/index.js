@@ -32,7 +32,7 @@ ws_server = new WebSocketServer({
  * Directory for client files.
  * @type {string}
  */
-const WORK_DIR = path.join(process.env.VAR_DATA, 'files')
+const WORK_DIR = path.join(process.env.VAR_DATA || process.env.PWD, 'files')
 
 /**
  * Size of the header in bytes
