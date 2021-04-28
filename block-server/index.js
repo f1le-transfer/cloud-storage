@@ -3,7 +3,8 @@
  * @author [lusm554]{@link https://github.com/lusm554}
  * @requires fs
  * @requires http
- * @requires RTCPeerConnection, RTCSessionDescription
+ * @requires RTCPeerConnection
+ * @requires RTCSessionDescription
  * @requires websocket
  */
 
@@ -12,8 +13,8 @@ const { server: WebSocketServer } = require('websocket')
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
-const { worker, parentPort } = require('worker_threads')
-const { Queue } = require('./queue')
+const { worker, parentPort } = require('worker_threads') // unused
+const { Queue } = require('./queue') // unused
 
 const httpServer = http.createServer((req, res) => { res.statusCode = 404; res.end('Not found') })
 httpServer.listen(5050, () => console.log('Server run on 5050'))
@@ -31,13 +32,13 @@ ws_server = new WebSocketServer({
  * Directory for client files.
  * @type {string}
  */
-const WORK_DIR = 'files'
+const WORK_DIR = path.join(process.env.VAR_DATA, 'files')
 
 /**
  * Size of the header in bytes
  * @type {number}
  */
-const HEADER_LEN = 100
+const HEADER_LEN = 200
 
 /**
  * Peer connection.
@@ -46,13 +47,7 @@ const HEADER_LEN = 100
 let peerConnection;
 
 /**
- * Writeable stream.
- * @type {object}
- */
-let writeStream;
-
-/**
- * TODO: Rewrite code with non-blocking callbacks
+ * TODO: Rewrite code with non-blocking callbacks, with flexible header
  */
 
 /**
@@ -150,26 +145,10 @@ function data_channel_handler(event) {
   const receiveChannel = event.channel
   receiveChannel.addEventListener('message', (e) => {
     const msg = e.data
-    if (typeof msg === 'string') {
-      let data;
-      try {
-        data = JSON.parse(msg)
-      } catch (error) {
-        return console.error('[ERROR] prase json string from client.')
-      }
-
-      // If msg is info of the file
-      if (data.name && data.dir) {
-        return createWriteStream(data)
-      }
-
-      console.log('[receiveChannel MSG]', data)
-    }
-
-    if (typeof msg == 'object') {
-      console.log('[receiveChannel MSG]', 'length', msg.byteLength)
+    if (typeof msg === 'object') {  
       return writeData(msg)
     }
+    console.log('[receiveChannel MSG]', data)
   })
 
   const onReceiveChannelStateChange = ({ type }) => console.log(`[receiveChannel] ${type}`)
@@ -180,17 +159,21 @@ function data_channel_handler(event) {
 
 /**
  * Create dir for clients files and write stream.
+ * Create dir by file name and write in this dir file chunks.
  * @param {String} file - name of the file
  */
 function createWriteStream(file) {
-  console.log('[receiveChannel MSG]', file)
-
-  // Create work directory if not exist
-  let dir = file.dir ? path.join(WORK_DIR, file.dir) : WORK_DIR
-  fs.mkdirSync(dir, { recursive: true }, console.error)
-  console.log('[FS]', `Dir ${path.join(file.dir, WORK_DIR)} created`)
-
-  writeStream = fs.createWriteStream(file.dir ? path.join(WORK_DIR, file.dir, path.normalize(file.name)) : path.join(WORK_DIR, path.normalize(file.name)))
+  try {
+    // Create work directory if not exist
+    let dir = file.dir ? path.join(WORK_DIR, file.dir, file.name) : WORK_DIR
+    const file_path = path.join(WORK_DIR, file.dir || '', file.name, path.normalize(`${file.chunk}_${file.version || 1}${path.extname(file.full_name)}.chunk`))
+    return fs.promises.mkdir(dir, { recursive: true })
+      .then((isNotExist) => isNotExist && console.log('[FS]', `Dir ${dir} created.`))
+      .then(() => fs.createWriteStream(file_path))
+      .catch(console.error)
+  } catch (error) {
+    return Promise.reject(error)
+  }
 }
 
 /**
@@ -203,7 +186,9 @@ function writeData(buffer) {
   const header = parse_header(data_Uint8Array)
   console.log('[HEADER]', header)
 
-  writeStream.write(data_Uint8Array.slice(HEADER_LEN), 'base64', (e) => e && console.log('[ERROR]', 'Error while writing data', e))
+  createWriteStream(header)
+    .then(writeStream => writeStream.write(data_Uint8Array.slice(HEADER_LEN), 'base64', (e) => e && console.log('[ERROR]', 'Error while writing data', e)))
+    .catch(console.error)
 }
 
 /**
@@ -224,7 +209,8 @@ function parse_header(buf) {
    */
   const char_arr = buf_header.slice(0, buf_header.indexOf(0))
   try {
-    return JSON.parse(String.fromCharCode.apply(null, char_arr))
+    let json = String.fromCharCode.apply(null, char_arr)
+    return JSON.parse(json)
   } catch (error) {
     return console.error('[ERROR] Error while parse header from file chunk.')
   }
