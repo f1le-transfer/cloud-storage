@@ -9,10 +9,9 @@ const EventEmitter = require('events')
 const { RTCPeerConnection, RTCSessionDescription } = require('wrtc')
 
 class PeerConnection extends EventEmitter {
-  constructor(offer, connection) {
+  constructor(connection) {
     super()
-    this.connection = connection 
-    this.offer = offer
+    this.connection = connection
     
     this.connection.on('message', ({ utf8Data: msg }) => {
       msg = JSON.parse(msg)
@@ -24,14 +23,14 @@ class PeerConnection extends EventEmitter {
    * Create peer connection, set remote desc and send answer client.
    * @returns {PeerConnection}
    */
-  set_offer() {
+  set_offer(offer) {
     const conf = {
       'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]
     }
 
     this.peerConnection = new RTCPeerConnection(conf)
     this.#set_peerConnection_events(this.peerConnection)
-    this.peerConnection.setRemoteDescription(new RTCSessionDescription(this.offer))
+    this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
     this.peerConnection.createAnswer()
       .then(answer => this.peerConnection.setLocalDescription(answer))
       .then(() => this.connection.sendUTF(JSON.stringify({ offer: this.peerConnection.currentLocalDescription })))

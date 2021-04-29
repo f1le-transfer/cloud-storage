@@ -77,7 +77,7 @@ function msg_handler(connection, { utf8Data: msg }) {
   if (!msg.offer) return;
 
   log('Offer received')
-  peerConnection = new PeerConnection(JSON.parse(msg.offer), connection).set_offer()
+  peerConnection = new PeerConnection(connection).set_offer(JSON.parse(msg.offer))
 
   peerConnection.on('error', console.error)
   peerConnection.on('buffer_data', (data) => writeData(data))
