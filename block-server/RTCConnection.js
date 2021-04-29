@@ -20,6 +20,10 @@ class PeerConnection extends EventEmitter {
     })
   }
 
+  /**
+   * Create peer connection, set remote desc and send answer client.
+   * @returns {PeerConnection}
+   */
   set_offer() {
     const conf = {
       'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]
@@ -34,18 +38,31 @@ class PeerConnection extends EventEmitter {
     return this
   }
 
+  /**
+   * Add ice candidate and send response status.
+   * @param {Object} ice - WebRTC candidate
+   * @param {Object} connection - res object
+   */
   #ice_handler(ice, connection) {
     this.peerConnection.addIceCandidate(ice)
       .catch(e => this.emit('error', e))
     connection.sendUTF(JSON.stringify({ status: 200 }))
   }
 
+  /**
+   * Add event handlers on peerConnection.
+   * @param {Object} c - peer connection
+   */
   #set_peerConnection_events(c) {
     c.addEventListener('datachannel', (e) => this.#data_channel_handler(e))
     c.addEventListener('iceconnectionstatechange', () =>  console.log('[peerConnection]', 'iceConnectionStateChange:', this.peerConnection.iceConnectionState))
     c.addEventListener('signalingstatechange', () => console.log('[peerConnection]', 'signalingStateChange:', this.peerConnection.signalingState))  
   }
 
+  /**
+   * Emit event with data and set listeners on receiveChannel.
+   * @param {Object} e - listener event object
+   */
   #data_channel_handler(e) {
     // Channel from client
     const receiveChannel = e.channel
