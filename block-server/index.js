@@ -3,16 +3,15 @@
  * @author [lusm554]{@link https://github.com/lusm554}
  * @requires fs
  * @requires http
- * @requires RTCPeerConnection
- * @requires RTCSessionDescription
  * @requires websocket
+ * @requires PeerConnection
  */
 
-const { RTCPeerConnection, RTCSessionDescription } = require('wrtc')
 const { server: WebSocketServer } = require('websocket')
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
+const PeerConnection = require('./RTCConnection')
 const { worker, parentPort } = require('worker_threads') // unused
 const { Queue } = require('./queue') // unused
 
@@ -42,7 +41,7 @@ const HEADER_LEN = 200
 
 /**
  * Peer connection.
- * @type {object}
+ * @type {class PeerConnection}
  */
 let peerConnection;
 
@@ -63,98 +62,26 @@ ws_server.on('request', (req) => {
   const connection = req.accept()
   log('Connected', req.origin)
 
-  connection.on('message', msg_handler.bind(undefined, req.origin, connection))
-  connection.on('close', close_handler.bind(undefined, req.origin))
+  connection.on('message', msg_handler.bind(undefined, connection))
+  connection.on('close', (code, desc) => log(`Closed ${req.origin} code:`, code, desc))
 })
 
 /**
  * Handle message.
- * @param {String} origin - request host
  * @param {Object} connection - res object
  * @param {String} msg - data in utf-8
  * @returns {void}
  */
-function msg_handler(origin, connection, { utf8Data: msg }) {
+function msg_handler(connection, { utf8Data: msg }) {
   msg = JSON.parse(msg)
-  if (msg.offer) {
-    log('Offer received')
-    return offer_handler(JSON.parse(msg.offer), connection)
-  }
-  if (msg['new-ice-candidate']) {
-    log('Candidate received')
-    return ice_handler(JSON.parse(msg['new-ice-candidate']), connection)
-  }
-  log(msg)
-}
+  if (!msg.offer) return;
 
-/**
- * Create peer connection, set remote desc and send asnwer to the client.
- * @param {Object} offer - WebRTC offer from client
- * @param {Object} connection - res object
- * @returns {void}
- */
-async function offer_handler(offer, connection) {
-  const configuration = {
-    'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]
-  }
+  log('Offer received')
+  peerConnection = new PeerConnection(JSON.parse(msg.offer), connection).set_offer()
 
-  peerConnection = new RTCPeerConnection(configuration)
-  set_peerConnection_events()
-  peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
-  peerConnection.createAnswer()
-    .then(answer => peerConnection.setLocalDescription(answer))
-    .then(() => connection.sendUTF(JSON.stringify({ offer: peerConnection.currentLocalDescription })))
-}
-
-/**
- * Add ice candidate and send response status.
- * @param {Object} ice - WebRTC candidate
- * @param {Object} connection - res object
- */
-function ice_handler(ice, connection) {
-  peerConnection.addIceCandidate(ice)
-    .catch(console.error)
-  connection.sendUTF(JSON.stringify({ status: 200 }))
-}
-
-/**
- * Call when websocket connection closed.
- * @param {String} origin - request host
- * @param {Number} code - close code
- * @param {String} desc - desc why connection closed
- */
-function close_handler(origin, code, desc) {
-  log(`Closed ${origin} code:`, code, desc)
-}
-
-/**
- * Add event handlers on peerConnection.
- */
-function set_peerConnection_events() {
-  peerConnection.addEventListener('datachannel', data_channel_handler)
-  peerConnection.addEventListener('iceconnectionstatechange', () =>  console.log('[peerConnection]', 'iceConnectionStateChange:', peerConnection.iceConnectionState))
-  peerConnection.addEventListener('signalingstatechange', () => console.log('[peerConnection]', 'signalingStateChange:', peerConnection.signalingState))
-}
-
-/**
- * Parse messages and set listeners on receiveChannel.
- * @param {Object} event - listener event object
- */
-function data_channel_handler(event) {
-  // Get data channel from client
-  const receiveChannel = event.channel
-  receiveChannel.addEventListener('message', (e) => {
-    const msg = e.data
-    if (typeof msg === 'object') {  
-      return writeData(msg)
-    }
-    console.log('[receiveChannel MSG]', data)
-  })
-
-  const onReceiveChannelStateChange = ({ type }) => console.log(`[receiveChannel] ${type}`)
-  receiveChannel.addEventListener('open', onReceiveChannelStateChange)
-  receiveChannel.addEventListener('close', onReceiveChannelStateChange)
-  receiveChannel.addEventListener('error', onReceiveChannelStateChange)
+  peerConnection.on('error', console.error)
+  peerConnection.on('buffer_data', (data) => writeData(data))
+  peerConnection.on('message', console.log)
 }
 
 /**
@@ -209,8 +136,7 @@ function parse_header(buf) {
    */
   const char_arr = buf_header.slice(0, buf_header.indexOf(0))
   try {
-    let json = String.fromCharCode.apply(null, char_arr)
-    return JSON.parse(json)
+    return JSON.parse(String.fromCharCode.apply(null, char_arr))
   } catch (error) {
     return console.error('[ERROR] Error while parse header from file chunk.')
   }
