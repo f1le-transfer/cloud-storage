@@ -74,14 +74,14 @@ ws_server.on('request', (req) => {
  */
 function msg_handler(connection, { utf8Data: msg }) {
   msg = JSON.parse(msg)
-  if (!msg.offer) return;
 
-  log('Offer received')
-  peerConnection = new PeerConnection(connection).set_offer(JSON.parse(msg.offer))
-
-  peerConnection.on('error', console.error)
-  peerConnection.on('buffer_data', (data) => writeData(data))
-  peerConnection.on('message', console.log)
+  if (msg.offer) {
+    log('Offer received')
+    peerConnection = new PeerConnection(connection).set_offer(JSON.parse(msg.offer))
+    peerConnection.on('error', console.error)
+    peerConnection.on('buffer_data', (data) => writeData(data))
+    peerConnection.on('message', console.log)
+  }
 }
 
 /**
