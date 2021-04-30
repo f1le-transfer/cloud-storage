@@ -8,10 +8,15 @@
 const EventEmitter = require('events')
 const { RTCPeerConnection, RTCSessionDescription } = require('wrtc')
 
+const local_log = (...data) => console.log('\x1b[32m%s\x1b[0m', '>', ...data)
+const remote_log = (...data) => console.log('\x1b[36m%s\x1b[0m', '>', ...data)
+
 class PeerConnection extends EventEmitter {
   constructor(connection) {
     super()
     this.connection = connection
+    this.peerConnection = null
+    this.sendChannel = null
     
     this.connection.on('message', ({ utf8Data: msg }) => {
       msg = JSON.parse(msg)
@@ -54,8 +59,8 @@ class PeerConnection extends EventEmitter {
    */
   #set_peerConnection_events(c) {
     c.addEventListener('datachannel', (e) => this.#data_channel_handler(e))
-    c.addEventListener('iceconnectionstatechange', () =>  console.log('[peerConnection]', 'iceConnectionStateChange:', this.peerConnection.iceConnectionState))
-    c.addEventListener('signalingstatechange', () => console.log('[peerConnection]', 'signalingStateChange:', this.peerConnection.signalingState))  
+    c.addEventListener('iceconnectionstatechange', () =>  local_log('[peerConnection]', 'iceConnectionStateChange:', this.peerConnection.iceConnectionState))
+    c.addEventListener('signalingstatechange', () => local_log('[peerConnection]', 'signalingStateChange:', this.peerConnection.signalingState))  
   }
 
   /**
@@ -73,7 +78,7 @@ class PeerConnection extends EventEmitter {
       return this.emit('message', msg)
     })
   
-    const onReceiveChannelStateChange = ({ type }) => console.log(`[receiveChannel] ${type}`)
+    const onReceiveChannelStateChange = ({ type }) => local_log(`[receiveChannel] ${type}`)
     receiveChannel.addEventListener('open', onReceiveChannelStateChange)
     receiveChannel.addEventListener('close', onReceiveChannelStateChange)
     receiveChannel.addEventListener('error', onReceiveChannelStateChange)
