@@ -74,8 +74,12 @@ ws_server.on('request', (req) => {
  */
 function msg_handler(connection, { utf8Data: msg }) {
   msg = JSON.parse(msg)
+  if (msg.createConnection) {
+    peerConnection = new PeerConnection(connection).createOffer()
+    return
+  }
 
-  if (msg.offer) {
+  if (msg.offer && msg.remoteConn) {
     log('Offer received')
     peerConnection = new PeerConnection(connection).set_offer(JSON.parse(msg.offer))
     peerConnection.on('error', console.error)

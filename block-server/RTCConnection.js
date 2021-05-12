@@ -38,7 +38,7 @@ class PeerConnection extends EventEmitter {
     this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
     this.peerConnection.createAnswer()
       .then(answer => this.peerConnection.setLocalDescription(answer))
-      .then(() => this.connection.sendUTF(JSON.stringify({ offer: this.peerConnection.currentLocalDescription })))
+      .then(() => this.connection.sendUTF(JSON.stringify({ offer: this.peerConnection.currentLocalDescription, answer: true })))
     return this
   }
 
@@ -82,6 +82,45 @@ class PeerConnection extends EventEmitter {
     receiveChannel.addEventListener('open', onReceiveChannelStateChange)
     receiveChannel.addEventListener('close', onReceiveChannelStateChange)
     receiveChannel.addEventListener('error', onReceiveChannelStateChange)
+  }
+
+  async createOffer() {
+    // Create peer connection
+    const configuration = { 'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}] }
+    const peerConnection = new RTCPeerConnection(configuration)
+
+    // log
+    peerConnection.addEventListener('iceconnectionstatechange', () => {
+      remote_log('iceconnectionstatechange:', peerConnection.iceConnectionState)
+    })
+    // log
+    peerConnection.addEventListener('signalingstatechange', () => {
+      remote_log('signalingstatechange:', peerConnection.signalingState)
+    })
+
+    // Send offer
+    const offer = await peerConnection.createOffer()
+    await peerConnection.setLocalDescription(offer)
+    this.connection.send(JSON.stringify({ offer, remoteConn: true }))
+    remote_log('Send offer.')
+
+    // Receive answer
+    this.connection.on('message', async ({ utf8Data: msg }) => {
+      msg = JSON.parse(JSON.parse(msg))
+      if (msg.answer) {
+        remote_log('Set local answer.')
+        const remoteDesc = new RTCSessionDescription(msg.offer)
+        await peerConnection.setRemoteDescription(remoteDesc)
+      }
+    })
+
+    // Send local ice candidate
+    peerConnection.addEventListener('icecandidate', event => {
+      remote_log(event.candidate)
+      if (event.candidate) {
+        this.connection.send(JSON.stringify({ 'new-ice-candidate': event.candidate }))
+      }
+    })
   }
 }
 
