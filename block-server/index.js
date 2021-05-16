@@ -74,9 +74,8 @@ ws_server.on('request', (req) => {
  */
 function msg_handler(connection, { utf8Data: msg }) {
   msg = JSON.parse(msg)
-  if (msg.createConnection) {
-    peerConnection = new PeerConnection(connection).createOffer()
-    return
+  if (msg.getListAvailableFiles) {
+    return sendFileInformation(connection)
   }
 
   if (msg.offer && msg.remoteConn) {
@@ -84,8 +83,44 @@ function msg_handler(connection, { utf8Data: msg }) {
     peerConnection = new PeerConnection(connection).set_offer(JSON.parse(msg.offer))
     peerConnection.on('error', console.error)
     peerConnection.on('buffer_data', (data) => writeData(data))
-    peerConnection.on('message', console.log)
+    peerConnection.on('message', (msg) => console.log('[DATA CHANNEL]', msg))
+    peerConnection.on('transferFile', transferFile)
   }
+}
+
+function transferFile(file) {
+  console.log(1, file)
+}
+
+// TODO: REWRITE ASYNC FUNCTION
+function sendFileInformation(connection) {
+  // function allFiles(dirPath, arrayOfFiles=[]) {
+  //   let files = fs.readdirSync(dirPath)
+  //   files.forEach(file => {
+  //     if (fs.statSync(dirPath + "/" + file).isDirectory()) {
+  //       allFiles(dirPath + "/" + file, arrayOfFiles)
+  //     } else {
+  //       arrayOfFiles.push(path.join(dirPath + '.' + file.split('.')[1]))
+  //     }
+  //   })
+  //   return arrayOfFiles
+  // }
+
+  async function allFiles(dirPath, arrayOfFiles=[]) {
+    let files = await fs.promises.readdir(dirPath)
+    for (let file of files) {
+      if (fs.statSync(path.join(dirPath, file)).isDirectory()) {
+        await allFiles(path.join(dirPath, file), arrayOfFiles)
+      } else {
+        arrayOfFiles.push(path.join(dirPath + '.' + file.split('.')[1]))
+      }
+    }
+    return arrayOfFiles
+  }
+
+  allFiles(WORK_DIR).then(files => {
+    connection.sendUTF(JSON.stringify({ listAvailableFiles: Array.from(new Set(files)) }))
+  })
 }
 
 /**

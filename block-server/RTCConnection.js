@@ -9,7 +9,6 @@ const EventEmitter = require('events')
 const { RTCPeerConnection, RTCSessionDescription } = require('wrtc')
 
 const local_log = (...data) => console.log('\x1b[32m%s\x1b[0m', '>', ...data)
-const remote_log = (...data) => console.log('\x1b[36m%s\x1b[0m', '>', ...data)
 
 class PeerConnection extends EventEmitter {
   constructor(connection) {
@@ -75,52 +74,22 @@ class PeerConnection extends EventEmitter {
       if (typeof msg === 'object') {  
         return this.emit('buffer_data', msg)
       }
-      return this.emit('message', msg)
+      
+      try {
+        let _msg = JSON.parse(msg)
+        if (_msg.isRecvFile) {
+          return this.emit('transferFile', _msg)
+        }
+        this.emit('message', _msg)
+      } catch (error) {
+        this.emit('message', msg)
+      }
     })
   
     const onReceiveChannelStateChange = ({ type }) => local_log(`[receiveChannel] ${type}`)
     receiveChannel.addEventListener('open', onReceiveChannelStateChange)
     receiveChannel.addEventListener('close', onReceiveChannelStateChange)
     receiveChannel.addEventListener('error', onReceiveChannelStateChange)
-  }
-
-  async createOffer() {
-    // Create peer connection
-    const configuration = { 'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}] }
-    const peerConnection = new RTCPeerConnection(configuration)
-
-    // log
-    peerConnection.addEventListener('iceconnectionstatechange', () => {
-      remote_log('iceconnectionstatechange:', peerConnection.iceConnectionState)
-    })
-    // log
-    peerConnection.addEventListener('signalingstatechange', () => {
-      remote_log('signalingstatechange:', peerConnection.signalingState)
-    })
-
-    // Send offer
-    const offer = await peerConnection.createOffer()
-    await peerConnection.setLocalDescription(offer)
-    this.connection.send(JSON.stringify({ offer, remoteConn: true }))
-    remote_log('Send offer.')
-
-    // Receive answer
-    this.connection.on('message', async ({ utf8Data: msg }) => {
-      msg = JSON.parse(JSON.parse(msg))
-      if (msg.answer) {
-        remote_log('Set local answer.')
-        const remoteDesc = new RTCSessionDescription(msg.offer)
-        await peerConnection.setRemoteDescription(remoteDesc)
-      }
-    })
-
-    // Send local ice candidate
-    peerConnection.addEventListener('icecandidate', event => {
-      remote_log(event.candidate)
-      if (event.candidate) {
-        this.connection.send(JSON.stringify({ 'new-ice-candidate': event.candidate }))
-      }
-    })
   }
 }
 
