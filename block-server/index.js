@@ -16,7 +16,6 @@ const { worker, parentPort } = require('worker_threads') // unused
 const { Queue } = require('./queue') // unused
 
 const httpServer = http.createServer((req, res) => { res.statusCode = 404; res.end('Not found') })
-httpServer.listen(5050, () => console.log('Server run on 5050'))
 
 /**
  * Web socket server
@@ -55,6 +54,10 @@ let peerConnection;
  */
 const log = (...data) => console.log('[WS]', ...data)
 
+fs.promises.access(WORK_DIR)
+  .catch(() => fs.promises.mkdir(WORK_DIR).catch(console.error))
+  .finally(() => httpServer.listen(5050, () => console.log('Server run on 5050')))
+
 /**
  * Receive messages from client.
  */
@@ -89,7 +92,20 @@ function msg_handler(connection, { utf8Data: msg }) {
 }
 
 function transferFile(file) {
-  console.log(1, file)
+  try {
+    console.log('[FILE REQUEST]', file)
+    const parse = path.parse(file.name)
+    fs.promises.readdir(path.join(parse.dir, parse.name))
+      .then(chunks => {
+        chunks.forEach(chunk_name => {
+          fs.createReadStream(path.join(parse.dir, parse.name, chunk_name)).on('data', data_chunk => {
+            peerConnection.dataChannel.send(data_chunk)
+          })
+        })
+      })  
+  } catch (error) {
+    console.log(error)  
+  }
 }
 
 // TODO: REWRITE ASYNC FUNCTION
@@ -121,6 +137,7 @@ function sendFileInformation(connection) {
   allFiles(WORK_DIR).then(files => {
     connection.sendUTF(JSON.stringify({ listAvailableFiles: Array.from(new Set(files)) }))
   })
+  .catch(console.error)
 }
 
 /**

@@ -15,7 +15,7 @@ class PeerConnection extends EventEmitter {
     super()
     this.connection = connection
     this.peerConnection = null
-    this.sendChannel = null
+    this.dataChannel = null
     
     this.connection.on('message', ({ utf8Data: msg }) => {
       msg = JSON.parse(msg)
@@ -68,17 +68,19 @@ class PeerConnection extends EventEmitter {
    */
   #data_channel_handler(e) {
     // Channel from client
-    const receiveChannel = e.channel
-    receiveChannel.addEventListener('message', (e) => {
-      const msg = e.data
-      if (typeof msg === 'object') {  
-        return this.emit('buffer_data', msg)
-      }
-      
+    const dataChannel = this.dataChannel = e.channel
+    dataChannel.addEventListener('message', (e) => {      
+      let msg;
       try {
+        msg = e.data
+        if (typeof msg === 'object') {  
+          return this.emit('buffer_data', msg)
+        }
+
         let _msg = JSON.parse(msg)
         if (_msg.isRecvFile) {
-          return this.emit('transferFile', _msg)
+          this.emit('transferFile', _msg)
+          return
         }
         this.emit('message', _msg)
       } catch (error) {
@@ -86,10 +88,10 @@ class PeerConnection extends EventEmitter {
       }
     })
   
-    const onReceiveChannelStateChange = ({ type }) => local_log(`[receiveChannel] ${type}`)
-    receiveChannel.addEventListener('open', onReceiveChannelStateChange)
-    receiveChannel.addEventListener('close', onReceiveChannelStateChange)
-    receiveChannel.addEventListener('error', onReceiveChannelStateChange)
+    const onDataChannelStateChange = ({ type }) => local_log(`[dataChannel] ${type}`)
+    dataChannel.addEventListener('open', onDataChannelStateChange)
+    dataChannel.addEventListener('close', onDataChannelStateChange)
+    dataChannel.addEventListener('error', onDataChannelStateChange)
   }
 }
 
