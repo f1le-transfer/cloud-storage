@@ -97,6 +97,10 @@ function transferFile(file) {
     const parse = path.parse(file.name)
     fs.promises.readdir(path.join(parse.dir, parse.name))
       .then(chunks => {
+        peerConnection.dataChannel.send(JSON.stringify({ len: chunks.length+1 }))
+        return chunks
+      })
+      .then(chunks => {
         chunks.forEach(chunk_name => {
           fs.createReadStream(path.join(parse.dir, parse.name, chunk_name)).on('data', data_chunk => {
             peerConnection.dataChannel.send(data_chunk)
