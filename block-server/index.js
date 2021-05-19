@@ -36,7 +36,7 @@ const WORK_DIR = path.join(process.env.VAR_DATA || process.env.PWD, 'files')
  * Size of the header in bytes
  * @type {number}
  */
-const HEADER_LEN = 200
+const HEADER_LEN = 300
 
 /**
  * Peer connection.
