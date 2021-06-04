@@ -99,7 +99,10 @@ function transferFile(file) {
     fs.promises.readdir(path.join(parse.dir, parse.name))
       .then(chunks => {
         peerConnection.dataChannel.send(JSON.stringify({ len: chunks.length+1 }))
-        return chunks
+        const toChunkNumber = (name) => name.split('.')[0].split('_')[0]
+
+        // Sorting the chunk names for the correct sequence of file data
+        return chunks.sort((f, s) => toChunkNumber(f) - toChunkNumber(s))
       })
       .then(chunks => {
         chunks.forEach(chunk_name => {
