@@ -36,7 +36,7 @@ const WORK_DIR = path.join(process.env.VAR_DATA || process.env.PWD, 'files')
  * Size of the header in bytes
  * @type {number}
  */
-const HEADER_LEN = 300
+const HEADER_LEN = 500
 
 /**
  * Peer connection.
@@ -46,6 +46,7 @@ let peerConnection;
 
 /**
  * TODO: Rewrite code with non-blocking callbacks, with flexible header
+ * FIX BUG WITH SAVE FILE WITH SAME NAMES BUT DIFFERENT EXTENSIONS
  */
 
 /**
@@ -114,18 +115,6 @@ function transferFile(file) {
 
 // TODO: REWRITE ASYNC FUNCTION
 function sendFileInformation(connection) {
-  // function allFiles(dirPath, arrayOfFiles=[]) {
-  //   let files = fs.readdirSync(dirPath)
-  //   files.forEach(file => {
-  //     if (fs.statSync(dirPath + "/" + file).isDirectory()) {
-  //       allFiles(dirPath + "/" + file, arrayOfFiles)
-  //     } else {
-  //       arrayOfFiles.push(path.join(dirPath + '.' + file.split('.')[1]))
-  //     }
-  //   })
-  //   return arrayOfFiles
-  // }
-
   async function allFiles(dirPath, arrayOfFiles=[]) {
     let files = await fs.promises.readdir(dirPath)
     for (let file of files) {
@@ -169,10 +158,7 @@ function createWriteStream(file) {
  */
 function writeData(buffer) {
   const data_Uint8Array = new Uint8Array(buffer)
-
   const header = parse_header(data_Uint8Array)
-  console.log('[HEADER]', header)
-
   createWriteStream(header)
     .then(writeStream => writeStream.write(data_Uint8Array.slice(HEADER_LEN), 'base64', (e) => e && console.log('[ERROR]', 'Error while writing data', e)))
     .catch(console.error)
