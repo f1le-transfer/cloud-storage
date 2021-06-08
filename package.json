@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/f1le-transfer/cloud-storage#readme",
   "dependencies": {
+    "node-fetch": "^2.6.1",
     "websocket": "^1.0.33",
     "wrtc": "^0.4.7"
   },
