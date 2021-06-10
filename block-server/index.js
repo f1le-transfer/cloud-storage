@@ -90,6 +90,27 @@ function msg_handler(connection, { utf8Data: msg }) {
     peerConnection.on('message', (msg) => console.log('[DATA CHANNEL]', msg))
     peerConnection.on('transferFile', transferFile)
   }
+
+  if (msg.delete) {
+    deleteFile(msg, connection)
+  }
+}
+
+function deleteFile({ delete: file_path }, connection) {
+  const parse = path.parse(file_path)
+  fs.promises.readdir(path.join(parse.dir, parse.name))
+    .then(chunks => {
+      const promises = []
+      chunks.forEach(chunk => {
+        promises.push(fs.promises.unlink(path.join(parse.dir, parse.name, chunk)))
+      })
+      return Promise.all(promises)
+    })
+    .then(() => {
+      return fs.promises.rmdir(path.join(parse.dir, parse.name))
+    })
+    .then(() => connection.sendUTF(JSON.stringify({ status: 200 })))
+    .catch(() => connection.sendUTF(JSON.stringify({ status: 400 })))
 }
 
 function transferFile(file) {
@@ -105,33 +126,43 @@ function transferFile(file) {
         return chunks.sort((f, s) => toChunkNumber(f) - toChunkNumber(s))
       })
       .then(chunks => {
-        chunks.forEach(chunk_name => {
-          fs.createReadStream(path.join(parse.dir, parse.name, chunk_name)).on('data', data_chunk => {
-            peerConnection.dataChannel.send(data_chunk)
+        // Reduce through chunks for sequential dispatch
+        chunks.reduce((acc, next_chunk_name) => {
+          return acc.then(() => {
+            return new Promise((res, rej) => {
+              fs.createReadStream(path.join(parse.dir, parse.name, next_chunk_name))
+              .on('data', data_chunk => {
+                peerConnection.dataChannel.send(data_chunk)
+              })
+              .on('end', res)
+              .on('error', rej)
+            })
           })
-        })
+        }, Promise.resolve())
       })  
   } catch (error) {
     console.log(error)  
   }
 }
 
-// TODO: REWRITE ASYNC FUNCTION
 function sendFileInformation(connection) {
-  async function allFiles(dirPath, arrayOfFiles=[]) {
+  async function allFiles(dirPath, filesObj={}) {
     let files = await fs.promises.readdir(dirPath)
     for (let file of files) {
       if (fs.statSync(path.join(dirPath, file)).isDirectory()) {
-        await allFiles(path.join(dirPath, file), arrayOfFiles)
+        await allFiles(path.join(dirPath, file), filesObj)
       } else {
-        arrayOfFiles.push(path.join(dirPath + '.' + file.split('.')[1]))
+        if (!(dirPath in filesObj)) {
+          filesObj[dirPath] = []
+        }
+        filesObj[dirPath].push(file)
       }
     }
-    return arrayOfFiles
+    return filesObj
   }
 
   allFiles(WORK_DIR).then(files => {
-    connection.sendUTF(JSON.stringify({ listAvailableFiles: Array.from(new Set(files)) }))
+    connection.sendUTF(JSON.stringify({ listAvailableFiles: files }))
   })
   .catch(console.error)
 }
@@ -145,7 +176,7 @@ function createWriteStream(file) {
   try {
     // Create work directory if not exist
     let dir = file.dir ? path.join(WORK_DIR, file.dir, file.name) : WORK_DIR
-    const file_path = path.join(WORK_DIR, file.dir || '', file.name, path.normalize(`${file.chunk}_${file.version || 1}${path.extname(file.full_name)}.chunk`))
+    const file_path = path.join(WORK_DIR, file.dir || '', file.name, path.normalize(`${file.chunk}_${file.version || 1}${path.extname(file.full_name)}.${file.hash}.chunk`))
     return fs.promises.mkdir(dir, { recursive: true })
       .then((isNotExist) => isNotExist && console.log('[FS]', `Dir ${dir} created.`))
       .then(() => fs.createWriteStream(file_path))
